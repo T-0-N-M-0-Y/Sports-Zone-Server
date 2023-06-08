@@ -27,13 +27,13 @@ async function run() {
         const usersCollection = client.db('sportsZone').collection('users');
 
         app.post('/users', async (req, res) => {
-            const user = req.body;
-            const query = { email: user.email }
+            const users = req.body;
+            const query = { email: users.email }
             const loggedInUser = await usersCollection.findOne(query);
             if (loggedInUser) {
               return res.send({ message: 'user already Exist' })
             }
-            const result = await usersCollection.insertOne(user);
+            const result = await usersCollection.insertOne(users);
             res.send(result)
           })
 
