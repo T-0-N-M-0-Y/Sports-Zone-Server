@@ -47,7 +47,7 @@ async function run() {
             const result = await usersCollection.find().toArray();
             res.send(result)
         })
-
+        
         // classes collection 
 
         app.get('/classes', async (req, res) => {
