@@ -28,6 +28,7 @@ async function run() {
         const usersCollection = client.db('sportsZone').collection('users');
         const classCollection = client.db('sportsZone').collection('classes');
         const instructorCollection = client.db('sportsZone').collection('instructors');
+        const selectedClassCollection = client.db('sportsZone').collection('selectedclass');
 
         // users Collection
 
@@ -58,6 +59,24 @@ async function run() {
 
         app.get('/instructors', async (req, res) => {
             const result = await instructorCollection.find().toArray();
+            res.send(result)
+        })
+
+        // Selected class collection 
+
+        app.post('/selectedclass', async (req, res) => {
+            const selected = req.body;
+            const result = await selectedClassCollection.insertOne(selected);
+            res.send(result);
+        })
+
+        app.get('/selectedclass', async (req, res) => {
+            const email = req.query.email;
+            if (!email) {
+                res.send([])
+            }
+            const query = { email: email }
+            const result = await selectedClassCollection.find(query).toArray();
             res.send(result)
         })
 
