@@ -42,20 +42,19 @@ async function run() {
         await client.connect();
 
         // database collection 
-
         const usersCollection = client.db('sportsZone').collection('users');
         const classCollection = client.db('sportsZone').collection('classes');
         const instructorCollection = client.db('sportsZone').collection('instructors');
         const selectedClassCollection = client.db('sportsZone').collection('selectedclass');
 
+        // Create jwt token
         app.post('/jwt', (req, res) => {
             const user = req.body;
             const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: '1h' })
             res.send({ accessToken });
         })
 
-        // users Collection
-
+        // users Collection Works
         app.post('/users', async (req, res) => {
             const users = req.body;
             const query = { email: users.email }
@@ -103,22 +102,46 @@ async function run() {
             res.send(result)
         })
 
-        // classes collection 
+        // Verify admin by email 
+        app.get('/users/admin/:email', verifyAccessWithJwtToken, async (req, res) => {
+            const email = req.params.email;
 
+            if (req.decoded.email !== email) {
+                res.send({ admin: false })
+            }
+
+            const query = { email: email };
+            const user = await usersCollection.findOne(query);
+            const result = { admin: user?.role === 'admin' }
+            res.send(result)
+        })
+        // Verify instructor by email 
+        app.get('/users/instructor/:email', verifyAccessWithJwtToken, async (req, res) => {
+            const email = req.params.email;
+
+            if (req.decoded.email !== email) {
+                res.send({ instructor: false })
+            }
+
+            const query = { email: email };
+            const user = await usersCollection.findOne(query);
+            const result = { instructor: user?.role === 'instructor' }
+            res.send(result)
+        })
+
+        // classes collection Works
         app.get('/classes', async (req, res) => {
             const result = await classCollection.find().toArray();
             res.send(result)
         })
 
-        // instructor collection 
-
+        // instructor collection Works
         app.get('/instructors', async (req, res) => {
             const result = await instructorCollection.find().toArray();
             res.send(result)
         })
 
-        // Selected class collection 
-
+        // Selected class collection Works
         app.post('/selectedclass', async (req, res) => {
             const selected = req.body;
             const result = await selectedClassCollection.insertOne(selected);
