@@ -9,12 +9,15 @@ app.use(cors());
 app.use(express.json())
 
 const verifyAccessWithJwtToken = (req, res, next) => {
+
     const authorization = req.headers.authorization;
+
     if (!authorization) {
         return res.status(401).send({ error: true, message: 'unauthorized access' });
     }
 
     const accessToken = authorization.split(' ')[1];
+    console.log(accessToken);
 
     jwt.verify(accessToken, process.env.ACCESS_TOKEN, (err, decoded) => {
         if (err) {
@@ -47,6 +50,28 @@ async function run() {
         const instructorCollection = client.db('sportsZone').collection('instructors');
         const selectedClassCollection = client.db('sportsZone').collection('selectedclass');
 
+        // Verify Admin Middleware 
+        const checkAdmin= async (req, res, next) => {
+            const email = req.decoded.email;
+            const query = { email: email }
+            const user = await usersCollection.findOne(query);
+            if (user?.role !== 'admin') {
+                return res.status(401).send({ error: true, message: 'Unauthorized access' })
+            }
+            next();
+        }
+
+        // Verify Instructor Middleware 
+        const isInstructor = async (req, res, next) => {
+            const email = req.decoded.email;
+            const query = { email: email }
+            const user = await usersCollection.findOne(query);
+            if (user?.role !== 'instructor') {
+                return res.status(401).send({ error: true, message: 'Unauthorized access' })
+            }
+            next();
+        }
+
         // Create jwt token
         app.post('/jwt', (req, res) => {
             const user = req.body;
@@ -66,7 +91,7 @@ async function run() {
             res.send(result)
         })
 
-        app.get('/users', async (req, res) => {
+        app.get('/users', verifyAccessWithJwtToken, checkAdmin,  async (req, res) => {
             const result = await usersCollection.find().toArray();
             res.send(result)
         })
@@ -107,7 +132,7 @@ async function run() {
             const email = req.params.email;
 
             if (req.decoded.email !== email) {
-                res.send({ admin: false })
+                return res.send({ admin: false })
             }
 
             const query = { email: email };
@@ -115,12 +140,13 @@ async function run() {
             const result = { admin: user?.role === 'admin' }
             res.send(result)
         })
+        
         // Verify instructor by email 
         app.get('/users/instructor/:email', verifyAccessWithJwtToken, async (req, res) => {
             const email = req.params.email;
 
             if (req.decoded.email !== email) {
-                res.send({ instructor: false })
+                return res.send({ instructor: false })
             }
 
             const query = { email: email };
@@ -151,7 +177,7 @@ async function run() {
         app.get('/selectedclass', verifyAccessWithJwtToken, async (req, res) => {
             const email = req.query.email;
             if (!email) {
-                res.send([])
+                return res.send([])
             }
             const decodedEmail = req.decoded.email;
             if (email !== decodedEmail) {
