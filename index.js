@@ -17,7 +17,6 @@ const verifyAccessWithJwtToken = (req, res, next) => {
     }
 
     const accessToken = authorization.split(' ')[1];
-    console.log(accessToken);
 
     jwt.verify(accessToken, process.env.ACCESS_TOKEN, (err, decoded) => {
         if (err) {
@@ -51,7 +50,7 @@ async function run() {
         const selectedClassCollection = client.db('sportsZone').collection('selectedclass');
 
         // Verify Admin Middleware 
-        const checkAdminOrInstructor= async (req, res, next) => {
+        const checkAdminOrInstructor = async (req, res, next) => {
             const email = req.decoded.email;
             const query = { email: email }
             const user = await usersCollection.findOne(query);
@@ -80,7 +79,7 @@ async function run() {
             res.send(result)
         })
 
-        app.get('/users', verifyAccessWithJwtToken, checkAdminOrInstructor,  async (req, res) => {
+        app.get('/users', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
             const result = await usersCollection.find().toArray();
             res.send(result)
         })
@@ -154,38 +153,52 @@ async function run() {
             const newClass = req.body;
             const result = await classCollection.insertOne(newClass);
             res.send(result)
-          })
+        })
 
-          app.patch('/classes/:id', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
+        app.get('/classes/email', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
+            const email = req.query.email;
+            if (!email) {
+                return res.send([])
+            }
+            const decodedEmail = req.decoded.email;
+            if (email !== decodedEmail) {
+                return res.status(403).send({ error: true, message: 'forbidden access' });
+            }
+            const query = { email: email }
+            const result = await classCollection.find(query).toArray();
+            res.send(result)
+        })
+
+        app.patch('/classes/pending/:id', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
-            const updateDoc = {
+            const updateData = {
                 $set: {
-                    status: 'Approved'
+                    status: 'Approved',
                 },
             };
-            const result = await classCollection.updateOne(filter, updateDoc);
+            const result = await classCollection.updateOne(filter, updateData);
             res.send(result);
         })
 
-          app.patch('/classes/:id', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
+        app.patch('/classes/denied/:id', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
-            const updateDoc = {
+            const updateData = {
                 $set: {
                     status: 'Denied'
                 },
             };
-            const result = await classCollection.updateOne(filter, updateDoc);
+            const result = await classCollection.updateOne(filter, updateData);
             res.send(result);
         })
-      
-          app.delete('/classes/:id', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
+
+        app.delete('/classes/:id', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await classCollection.deleteOne(query);
             res.send(result)
-          })
+        })
 
         // instructor collection Works
         app.get('/instructors', async (req, res) => {
