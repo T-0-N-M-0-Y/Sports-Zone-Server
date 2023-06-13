@@ -51,22 +51,11 @@ async function run() {
         const selectedClassCollection = client.db('sportsZone').collection('selectedclass');
 
         // Verify Admin Middleware 
-        const checkAdmin= async (req, res, next) => {
+        const checkAdminOrInstructor= async (req, res, next) => {
             const email = req.decoded.email;
             const query = { email: email }
             const user = await usersCollection.findOne(query);
-            if (user?.role !== 'admin') {
-                return res.status(401).send({ error: true, message: 'Unauthorized access' })
-            }
-            next();
-        }
-
-        // Verify Instructor Middleware 
-        const isInstructor = async (req, res, next) => {
-            const email = req.decoded.email;
-            const query = { email: email }
-            const user = await usersCollection.findOne(query);
-            if (user?.role !== 'instructor') {
+            if (user?.role !== 'admin' && user?.role !== 'instructor') {
                 return res.status(401).send({ error: true, message: 'Unauthorized access' })
             }
             next();
@@ -91,7 +80,7 @@ async function run() {
             res.send(result)
         })
 
-        app.get('/users', verifyAccessWithJwtToken, checkAdmin,  async (req, res) => {
+        app.get('/users', verifyAccessWithJwtToken, checkAdminOrInstructor,  async (req, res) => {
             const result = await usersCollection.find().toArray();
             res.send(result)
         })
@@ -140,7 +129,7 @@ async function run() {
             const result = { admin: user?.role === 'admin' }
             res.send(result)
         })
-        
+
         // Verify instructor by email 
         app.get('/users/instructor/:email', verifyAccessWithJwtToken, async (req, res) => {
             const email = req.params.email;
@@ -160,6 +149,43 @@ async function run() {
             const result = await classCollection.find().toArray();
             res.send(result)
         })
+
+        app.post('/classes', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
+            const newClass = req.body;
+            const result = await classCollection.insertOne(newClass);
+            res.send(result)
+          })
+
+          app.patch('/classes/:id', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    status: 'Approved'
+                },
+            };
+            const result = await classCollection.updateOne(filter, updateDoc);
+            res.send(result);
+        })
+
+          app.patch('/classes/:id', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    status: 'Denied'
+                },
+            };
+            const result = await classCollection.updateOne(filter, updateDoc);
+            res.send(result);
+        })
+      
+          app.delete('/classes/:id', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await classCollection.deleteOne(query);
+            res.send(result)
+          })
 
         // instructor collection Works
         app.get('/instructors', async (req, res) => {
