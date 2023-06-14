@@ -2,6 +2,7 @@ const express = require('express')
 const cors = require('cors')
 const jwt = require('jsonwebtoken');
 require('dotenv').config()
+const stripe = require('stripe')(process.env.PAYMENT_TEST_API_KEY);
 const app = express()
 const port = process.env.PORT | 5000
 
@@ -48,6 +49,7 @@ async function run() {
         const classCollection = client.db('sportsZone').collection('classes');
         const instructorCollection = client.db('sportsZone').collection('instructors');
         const selectedClassCollection = client.db('sportsZone').collection('selectedclass');
+        const paymentsCollection = client.db('sportsZone').collection('payment');
 
         // Verify Admin Middleware 
         const checkAdminOrInstructor = async (req, res, next) => {
@@ -233,6 +235,32 @@ async function run() {
             const result = await selectedClassCollection.deleteOne(query);
             res.send(result)
         })
+
+        // Payment Works 
+
+        app.post('/create-payment-intent', verifyAccessWithJwtToken, async (req, res) => {
+            const { price } = req.body;
+            const amount = price * 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+            });
+        });
+
+        app.post('/payment', verifyAccessWithJwtToken, async (req, res) => {
+            const payment = req.body;
+            const  result = await paymentsCollection.insertOne(payment);
+            const query = {_id: {$in: payment.class.map(id => new ObjectId(id))}}
+            const deleteResult = await selectedClassCollection.deleteMany(query)
+            res.send({result, deleteResult});
+           })
+
+
 
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
