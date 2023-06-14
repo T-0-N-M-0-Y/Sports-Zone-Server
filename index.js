@@ -42,7 +42,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
     try {
-        await client.connect();
+        client.connect();
 
         // database collection 
         const usersCollection = client.db('sportsZone').collection('users');
@@ -254,11 +254,25 @@ async function run() {
 
         app.post('/payment', verifyAccessWithJwtToken, async (req, res) => {
             const payment = req.body;
-            const  result = await paymentsCollection.insertOne(payment);
-            const query = {_id: {$in: payment.class.map(id => new ObjectId(id))}}
+            const result = await paymentsCollection.insertOne(payment);
+            const query = { _id: { $in: payment.class.map(id => new ObjectId(id)) } }
             const deleteResult = await selectedClassCollection.deleteMany(query)
-            res.send({result, deleteResult});
-           })
+            res.send({ result, deleteResult });
+        })
+
+        app.get('/payment', verifyAccessWithJwtToken, async (req, res) => {
+            const email = req.query.email;
+            if (!email) {
+                return res.send([])
+            }
+            const decodedEmail = req.decoded.email;
+            if (email !== decodedEmail) {
+                return res.status(403).send({ error: true, message: 'forbidden access' });
+            }
+            const query = { email: email }
+            const result = await paymentsCollection.find(query).toArray();
+            res.send(result);
+        })
 
 
 
