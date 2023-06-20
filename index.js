@@ -57,7 +57,7 @@ async function run() {
             const query = { email: email }
             const user = await usersCollection.findOne(query);
             if (user?.role !== 'admin' && user?.role !== 'instructor') {
-                return res.status(401).send({ error: true, message: 'Unauthorized access' })
+                return res.status(403).send({ error: true, message: 'forbidden access!' })
             }
             next();
         }
@@ -75,7 +75,7 @@ async function run() {
             const query = { email: users.email }
             const loggedInUser = await usersCollection.findOne(query);
             if (loggedInUser) {
-                return res.send({ message: 'Already loggedin' })
+                return res.send({ message: 'Already logged In' })
             }
             const result = await usersCollection.insertOne(users);
             res.send(result)
@@ -146,32 +146,41 @@ async function run() {
         })
 
         // classes collection Works
-        app.get('/classes', async (req, res) => {
-            const result = await classCollection.find().toArray();
-            res.send(result)
-        })
-
         app.post('/classes', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
             const newClass = req.body;
             const result = await classCollection.insertOne(newClass);
             res.send(result)
         })
 
+        // load all class for users
+        app.get('/classes', async (req, res) => {
+            const query = { status: "Approved" };
+            const result = await classCollection.find(query).toArray();
+            res.send(result)
+        })
+
+        // load sorted class in home
+        app.get('/popularClasses', async (req, res) => {
+            const query = { status: "Approved" };
+            const result = await classCollection.find(query).sort({ numStudents: -1 }).limit(6).toArray();
+            res.send(result)
+        })
+
+        // manage  all classes by admin 
+        app.get('/manageClasses', async (req, res) => {
+            const result = await classCollection.find().toArray();
+            res.send(result)
+        })
+
+        // my classes for instructor 
         app.get('/classes/email', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
             const email = req.query.email;
-            if (!email) {
-                return res.send([])
-            }
-            const decodedEmail = req.decoded.email;
-            if (email !== decodedEmail) {
-                return res.status(403).send({ error: true, message: 'forbidden access' });
-            }
             const query = { email: email }
             const result = await classCollection.find(query).toArray();
             res.send(result)
         })
 
-        app.patch('/classes/pending/:id', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
+        app.patch('/manageClasses/pending/:id', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
             const updateData = {
@@ -183,7 +192,7 @@ async function run() {
             res.send(result);
         })
 
-        app.patch('/classes/denied/:id', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
+        app.patch('/manageClasses/denied/:id', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
             const updateData = {
@@ -204,7 +213,7 @@ async function run() {
 
         // instructor collection Works
         app.get('/instructors', async (req, res) => {
-            const result = await instructorCollection.find().toArray();
+            const result = await instructorCollection.find().sort({ numStudents: -1 }).limit(6).toArray();
             res.send(result)
         })
 
@@ -262,15 +271,21 @@ async function run() {
 
         app.get('/payment', verifyAccessWithJwtToken, async (req, res) => {
             const email = req.query.email;
-            if (!email) {
-                return res.send([])
-            }
-            const decodedEmail = req.decoded.email;
-            if (email !== decodedEmail) {
-                return res.status(403).send({ error: true, message: 'forbidden access' });
-            }
             const query = { email: email }
-            const result = await paymentsCollection.find(query).toArray();
+            const options = {
+                sort: { date: -1 }
+            };
+            const result = await paymentsCollection.find(query, options).toArray();
+            res.send(result);
+        })
+
+        app.get('/paymentInfo', verifyAccessWithJwtToken, async (req, res) => {
+            const email = req.query.email;
+            const query = { email: email }
+            const options = {
+                projection: { _id: 1, classImage: 1, className: 1, date: 1, classID: 1 },
+            };
+            const result = await paymentsCollection.find(query, options).toArray();
             res.send(result);
         })
 
