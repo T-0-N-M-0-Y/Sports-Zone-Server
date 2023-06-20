@@ -204,7 +204,7 @@ async function run() {
             res.send(result);
         })
 
-        app.patch('/classes-update-enroll', verifyJWT, async (req, res) => {
+        app.patch('/classes-update-enroll', verifyAccessWithJwtToken, async (req, res) => {
             const _ids = req.body.map(id => new ObjectId(id));
             try {
                 const updatedClasses = await classCollection.updateMany(
@@ -227,7 +227,7 @@ async function run() {
 
         // instructor collection Works
         app.get('/instructors', async (req, res) => {
-            const result = await instructorCollection.find().sort({ numStudents: -1 }).limit(6).toArray();
+            const result = await instructorCollection.find().sort({ numStudents: -1 }).toArray();
             res.send(result)
         })
 
