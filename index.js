@@ -204,6 +204,20 @@ async function run() {
             res.send(result);
         })
 
+        app.patch('/classes-update-enroll', verifyJWT, async (req, res) => {
+            const _ids = req.body.map(id => new ObjectId(id));
+            try {
+                const updatedClasses = await classCollection.updateMany(
+                    { _id: { $in: _ids } },
+                    { $inc: { numStudents: 1, availableSeats: -1 } }
+                );
+                res.send(updatedClasses);
+            } catch (err) {
+                console.error(err);
+                res.status(500).json({ message: 'Server Error' });
+            }
+        })
+
         app.delete('/classes/:id', verifyAccessWithJwtToken, checkAdminOrInstructor, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
